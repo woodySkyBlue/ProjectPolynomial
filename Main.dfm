@@ -2,8 +2,8 @@ object Form1: TForm1
   Left = 0
   Top = 0
   Caption = 'Form1'
-  ClientHeight = 813
-  ClientWidth = 392
+  ClientHeight = 364
+  ClientWidth = 636
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -13,8 +13,8 @@ object Form1: TForm1
   PixelsPerInch = 144
   TextHeight = 25
   object Button1: TButton
-    Left = 245
-    Top = 765
+    Left = 513
+    Top = 10
     Width = 113
     Height = 38
     Margins.Left = 5
@@ -27,21 +27,22 @@ object Form1: TForm1
   end
   object Memo1: TMemo
     Left = 0
-    Top = 0
-    Width = 392
-    Height = 755
+    Top = 63
+    Width = 636
+    Height = 301
     Margins.Left = 5
     Margins.Top = 5
     Margins.Right = 5
     Margins.Bottom = 5
-    Align = alTop
+    Align = alBottom
     ScrollBars = ssBoth
     TabOrder = 1
-    ExplicitWidth = 382
+    ExplicitLeft = 10
+    ExplicitTop = 108
   end
   object Button2: TButton
-    Left = 72
-    Top = 765
+    Left = 390
+    Top = 10
     Width = 113
     Height = 38
     Margins.Left = 5
@@ -51,5 +52,29 @@ object Form1: TForm1
     Caption = 'Button2'
     TabOrder = 2
     OnClick = Button2Click
+  end
+  object Edit1: TEdit
+    Left = 10
+    Top = 10
+    Width = 147
+    Height = 33
+    Margins.Left = 5
+    Margins.Top = 5
+    Margins.Right = 5
+    Margins.Bottom = 5
+    TabOrder = 3
+    Text = 'Edit1'
+  end
+  object Edit2: TEdit
+    Left = 167
+    Top = 10
+    Width = 147
+    Height = 33
+    Margins.Left = 5
+    Margins.Top = 5
+    Margins.Right = 5
+    Margins.Bottom = 5
+    TabOrder = 4
+    Text = 'Edit1'
   end
 end

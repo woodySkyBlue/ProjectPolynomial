@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages,
-  System.SysUtils, System.Variants, System.Classes, System.Math,
+  System.SysUtils, System.Variants, System.Classes, System.Math, System.Generics.Collections,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls;
 
 type
@@ -16,20 +16,43 @@ type
   end;
 
   TSinFitOrder = (sporFitOrder1, sporFitOrder2, sporFitOrder3);
+  TSinCalcSide = (sditLarge, sditSmall);
 
   TSinPoly = record
   private
     FDataX, FDataY: array of Double;
+    FMaxFitOrder: TSinFitOrder;
+    // Polynomial用メソッド
     function ProcLinear: TArrayOfDouble;
     function ProcGauss(AGauss: TArrayOfArrayOfDouble): TArrayOfDouble;
     function ProcPolyfit(AOrder: TSinFitOrder): TArrayOfDouble;
+    //function ProcPolyValue(AOrder: TSinFitOrder; AValue: Double): Double;
+    function ProcPolyOrder1Value(AValue: Double): Double;
+    function ProcPolyOrder2Value(AValue: Double): Double;
+    function ProcPolyOrder3Value(AValue: Double): Double;
+    function ProcPolyOrder1Fit: TArrayOfDouble;
+    function ProcPolyOrder2Fit: TArrayOfDouble;
+    function ProcPolyOrder3Fit: TArrayOfDouble;
+    // Root用メソッド
+    function ProcRootBase(Ax, Ab, Ac, Ad: Double): Double;
+    function ProcRootPrime(Ax, Ab, Ac: Double): Double;
+    function ProcRootNewton(Ax, Ab, Ac, Ad: Double): Double;
+    function ProcRootOrder1(ATargetValue: Double): TArrayOfDouble;
+    function ProcRootOrder2(ATargetValue: Double): TArrayOfDouble;
+    function ProcRootOrder3(ATargetValue: Double): TArrayOfDouble;
+    // プロパティ用メソッド
+    function GetMaxFitOrder: TSinFitOrder;
     function GetCount: Integer;
   public
-    function Polyfit(AOrder: TSinFitOrder): TArrayOfDouble;
-    function PolyValue(AOrder: TSinFitOrder; AValue: Double): Double;
+    function Polyfit: TArrayOfDouble;
+    //function PolyValue(AOrder: TSinFitOrder; AValue: Double): Double;
+    function PolyValue(AValue: Double): Double;
+    function RootValue(ATargetValue: Double): TArrayOfDouble;
+    function TryRootValue(ATargetValue, ABaseValue: Double; ASide: TSinCalcSide; var ARetValue: Double): Boolean;
     procedure Add(AData: TSinPolyData); overload;
     procedure Add(AValueX, AValueY: Double); overload;
     procedure Clear;
+    property MaxFitOrder: TSinFitOrder read GetMaxFitOrder write FMaxFitOrder;
     property Count: Integer read GetCount;
   end;
 
@@ -37,6 +60,8 @@ type
     Button1: TButton;
     Memo1: TMemo;
     Button2: TButton;
+    Edit1: TEdit;
+    Edit2: TEdit;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
   private
@@ -68,11 +93,11 @@ begin
   var FDataSize := 5;     // データ数=3 Sin S01
   SetLength(FArrayX, FDataSize);
   SetLength(FArrayY, FDataSize);
-  FArrayX[0] := 1;  FArrayY[0] := 10;
+  FArrayX[0] := 1;  FArrayY[0] := 30;
   FArrayX[1] := 2;  FArrayY[1] := 15;
   FArrayX[2] := 3;  FArrayY[2] := 30;
   FArrayX[3] := 4;  FArrayY[3] := 40;
-  FArrayX[4] := 5;  FArrayY[4] := 20;
+  FArrayX[4] := 5;  FArrayY[4] := 55;
   //Sai(FArrayX, FArrayY, FOrder, FDataSize);
   //Linear(FArrayX, FArrayY, FDataSize);
   var F := Polyfit(FArrayX, FArrayY, 3, 5);
@@ -85,28 +110,36 @@ var
   F: TSinPoly;
   FData: TSinPolyData;
   FList: TUnitDataList;
+  FValue: Double;
 begin
-//  FData.X := 1; FData.Y := 10; F.Add(FData);
-//  FData.X := 2; FData.Y := 15; F.Add(FData);
-//  FData.X := 3; FData.Y := 30; F.Add(FData);
-//  FData.X := 4; FData.Y := 40; F.Add(FData);
-//  FData.X := 5; FData.Y := 20; F.Add(FData);
-  F.Add(1, 10);
+　F.Clear;
+  F.MaxFitOrder := sporFitOrder3;
+  F.Add(1, 30);
   F.Add(2, 15);
   F.Add(3, 30);
   F.Add(4, 40);
-  F.Add(5, 20);
-  //var R := F.Polyfit(sporFitOrder2);
-  //for var Cnt := 0 to High(R) do Memo1.Lines.Add(R[Cnt].ToString);
-  FList.Clear;
-  for var Cnt := 0 to 10 do FList.Add(F.PolyValue(sporFitOrder1, Cnt), 3);
-  Memo1.Lines.Add(FList.TabText);
-  FList.Clear;
-  for var Cnt := 0 to 10 do FList.Add(F.PolyValue(sporFitOrder2, Cnt), 3);
-  Memo1.Lines.Add(FList.TabText);
-  FList.Clear;
-  for var Cnt := 0 to 10 do FList.Add(F.PolyValue(sporFitOrder3, Cnt), 3);
-  Memo1.Lines.Add(FList.TabText);
+//  F.Add(5, 55);
+
+//  var R := F.Polyfit;
+//  for var Cnt := High(R) downto 0 do Memo1.Lines.Add(Format('R[%d]=%g', [Cnt, R[Cnt]]));
+
+//  Memo1.Lines.Add(Format('f(%g)=%g', [0.0, F.PolyValue(0.0)]));
+//  Memo1.Lines.Add(Format('f(%g)=%g', [1.0, F.PolyValue(1.0)]));
+//  Memo1.Lines.Add(Format('f(%g)=%g', [2.0, F.PolyValue(2.0)]));
+//  Memo1.Lines.Add(Format('f(%g)=%g', [3.0, F.PolyValue(3.0)]));
+//  Memo1.Lines.Add(Format('f(%g)=%g', [4.0, F.PolyValue(4.0)]));
+//  Memo1.Lines.Add(Format('f(%g)=%g', [5.0, F.PolyValue(5.0)]));
+//  Memo1.Lines.Add(Format('f(%g)=%g', [6.0, F.PolyValue(6.0)]));
+
+//  var R := F.RootValue(StrToFloatDef(Edit1.Text, 0.0));
+//  for var Cnt := 0 to High(R) do Memo1.Lines.Add(Format('y=%g', [R[Cnt]]));
+
+  var FT := StrToFloatDef(Edit1.Text, 0.0);
+  var FB := StrToFLoatDef(Edit2.Text, 0.0);
+  if F.TryRootValue(FT, FB, sditSmall, FValue) then
+    Memo1.Lines.Add(Format('x=%g', [FValue]))
+  else
+    Memo1.Lines.Add('None');
 end;
 
 procedure TForm1.ProcMemoMessage(A: TArrayOfArrayOfDouble);
@@ -226,19 +259,57 @@ begin
   FDataY[Self.Count-1] := AValueY;
 end;
 
-function TSinPoly.PolyValue(AOrder: TSinFitOrder; AValue: Double): Double;
+function TSinPoly.PolyValue(AValue: Double): Double;
 begin
   Result := 0.0;
-  var F := ProcPolyfit(AOrder);
-  case AOrder of
-    sporFitOrder1: Result := AValue * F[1] + F[0];
-    sporFitOrder2: Result := F[2] * Sqr(AValue) + F[1] * AValue + F[0];
-    sporFitOrder3: Result := F[3] * Power(AValue, 3) + F[2] * Sqr(AValue) + F[1] * AValue + F[0];
+  case Self.FMaxFitOrder of
+    sporFitOrder1: Result := ProcPolyOrder1Value(AValue);
+    sporFitOrder2: Result := ProcPolyOrder2Value(AValue);
+    sporFitOrder3: Result := ProcPolyOrder3Value(AValue);
   end;
-//  var F1 := F[2] * Power(AValue, 2);
-//  var F2 := F[1] * Sqr(AValue);
-//  var F3 := F[0];
-//  Result := F1 + F2 + F3;
+end;
+
+function TSinPoly.RootValue(ATargetValue: Double): TArrayOfDouble;
+begin
+  SetLength(Result, 0);
+  case Self.FMaxFitOrder of
+    sporFitOrder1: Result := ProcRootOrder1(ATargetValue);
+    sporFitOrder2: Result := ProcRootOrder2(ATargetValue);
+    sporFitOrder3: Result := ProcRootOrder3(ATargetValue);
+  end;
+end;
+
+function TSinPoly.TryRootValue(ATargetValue, ABaseValue: Double; ASide: TSinCalcSide; var ARetValue: Double): Boolean;
+var
+  FData: TArrayOfDouble;
+begin
+  Result := False;
+  if Self.Count > 1 then begin
+    SetLength(FData, 0);
+    case Self.FMaxFitOrder of
+      sporFitOrder1: FData := ProcRootOrder1(ATargetValue);
+      sporFitOrder2: FData := ProcRootOrder2(ATargetValue);
+      sporFitOrder3: FData := ProcRootOrder3(ATargetValue);
+    end;
+    if ASide = sditLarge then
+      // ABaseValueよりも大きなRoot値を見つける
+      for var Cnt := 0 to High(FData) do begin
+        if FData[Cnt] > ABaseValue then begin
+          Result := True;
+          ARetValue := FData[Cnt];
+          Exit;
+        end;
+      end
+    else
+      // ABaseValueよりも小さなRoot値を見つける
+      for var Cnt := High(FData) downto 0 do begin
+        if FData[Cnt] < ABaseValue then begin
+          Result := True;
+          ARetValue := FData[Cnt];
+          Exit;
+        end;
+      end;
+  end;
 end;
 
 procedure TSinPoly.Clear;
@@ -252,9 +323,20 @@ begin
   Result := Length(FDataY);
 end;
 
-function TSinPoly.Polyfit(AOrder: TSinFitOrder): TArrayOfDouble;
+function TSinPoly.GetMaxFitOrder: TSinFitOrder;
 begin
-  Result := ProcPolyfit(AOrder);
+  Result := sporFitOrder2;
+  if Self.FMaxFitOrder in [sporFitOrder1..sporFitOrder3] then Result := FMaxFitOrder;
+end;
+
+function TSinPoly.Polyfit: TArrayOfDouble;
+begin
+  SetLength(Result, 0);
+  case Self.FMaxFitOrder of
+    sporFitOrder1: Result := ProcPolyOrder1Fit;
+    sporFitOrder2: Result := ProcPolyOrder2Fit;
+    sporFitOrder3: Result := ProcPolyOrder3Fit;
+  end;
 end;
 
 function TSinPoly.ProcLinear: TArrayOfDouble;
@@ -326,6 +408,167 @@ begin
         FGaussArray[i, FOrder] := FGaussArray[i, FOrder] + power(FDataX[k], i) * FDataY[k];
     Result := ProcGauss(FGaussArray);
   end;
+end;
+
+function TSinPoly.ProcPolyOrder1Value(AValue: Double): Double;
+begin
+  Result := 0.0;
+  if Self.Count > 1 then begin
+    var F := ProcPolyfit(sporFitOrder1);
+    Result := AValue * F[1] + F[0];
+  end;
+end;
+
+function TSinPoly.ProcPolyOrder2Value(AValue: Double): Double;
+begin
+  if Self.Count > 2 then begin
+    var F := ProcPolyfit(sporFitOrder2);
+    Result := F[2] * Sqr(AValue) + F[1] * AValue + F[0];
+  end
+  else begin
+    Result := Self.ProcPolyOrder1Value(AValue);
+  end;
+end;
+
+function TSinPoly.ProcPolyOrder3Value(AValue: Double): Double;
+begin
+  if Self.Count > 3 then begin
+    var F := ProcPolyfit(sporFitOrder3);
+    Result := F[3] * Power(AValue, 3) + F[2] * Sqr(AValue) + F[1] * AValue + F[0];
+  end
+  else begin
+    Result := Self.ProcPolyOrder2Value(AValue);
+  end;
+end;
+
+function TSinPoly.ProcRootBase(Ax, Ab, Ac, Ad: Double): Double;
+begin
+  // x^3+bx^2+cx+d
+  Result := ((Ab + Ax) * Ax + Ac) * Ax + Ad;
+end;
+
+function TSinPoly.ProcRootPrime(Ax, Ab, Ac: Double): Double;
+begin
+  // 3x^2+2bx+c (f()の導関数)
+  Result := (2 * Ab + 3 * Ax) * Ax + Ac;
+end;
+
+function TSinPoly.ProcRootNewton(Ax, Ab, Ac, Ad: Double): Double;
+begin
+  while true do begin
+    var Fx := ProcRootBase(Ax, AB, AC, AD);
+    var Fp := ProcRootPrime(Ax, AB, AC);
+    if Fp = 0 then Fp := 1;
+    var Fxprev := Ax;
+    Ax := Ax - (Fx / Fp);
+    if SameValue(Ax, Fxprev, 1E-15) then Break;
+  end;
+  Result := Ax;
+end;
+
+function TSinPoly.ProcRootOrder1(ATargetValue: Double): TArrayOfDouble;
+var
+  FData: TArrayOfDouble;
+begin
+  SetLength(Result, 0);
+  FData := ProcPolyOrder1Fit;
+  if (Length(FData) = 2) and (FData[0] <> 0) then begin
+    SetLength(Result, 1);
+    Result[0] := (ATargetValue - FData[0]) / FData[1];
+  end;
+end;
+
+function TSinPoly.ProcRootOrder2(ATargetValue: Double): TArrayOfDouble;
+var
+  FData: TArrayOfDouble;        // Fa->2 Fb->1 Fc->0
+  FList: TList<Double>;
+begin
+  SetLength(Result, 0);
+  FData := ProcPolyOrder2Fit;
+  if Length(FData) < 3 then
+    Result := ProcRootOrder1(ATargetValue)
+  else if Length(FData) = 3 then begin
+    var FValue := Sqr(FData[1])-4*FData[2]*(FData[0]-ATargetValue);
+    if FValue >= 0 then begin
+      SetLength(Result, 2);
+      FList := TList<Double>.Create;
+      try
+        FList.Add((-FData[1]+Sqrt(FValue)) / (2*FData[2]));
+        FList.Add((-FData[1]-Sqrt(FValue)) / (2*FData[2]));
+        FList.Sort;
+        for var Cnt := 0 to High(Result) do Result[Cnt] := FList[Cnt];
+      finally
+        FList.Free;
+      end;
+    end;
+  end;
+end;
+
+function TSinPoly.ProcRootOrder3(ATargetValue: Double): TArrayOfDouble;
+var
+  FData: TArrayOfDouble;       // Fa->3 Fb->2 Fc->1  Fd->0
+  FList: TList<Double>;
+  FA, FB, FC, FD: Double;
+begin
+  SetLength(Result, 0);
+  FData := ProcPolyOrder3Fit;
+  if Length(FData) < 4 then
+    Result := ProcRootOrder2(ATargetValue)
+  else if Length(FData) = 4 then begin
+    FD := FData[0]-ATargetValue;
+    FB := FData[2] / FData[3];
+    FC := FData[1] / FData[3];
+    FD := FD / FData[3];
+    FA := FB*FB-3*FC;
+    if FA > 0 then begin
+      FList := TList<Double>.Create;
+      try
+        FA := 2*Sqrt(FA)/3;
+        FList.Add(ProcRootNewton(-FA-FB/3, FB, FC, FD));
+        FList.Add(ProcRootNewton( FA-FB/3, FB, FC, FD));
+        if FList[0] <> FList[1] then begin
+          FList.Add(ProcRootNewton(FB/(-3), FB, FC, FD));
+          FList.Sort;
+          SetLength(Result, 3);
+          for var Cnt := 0 to High(Result) do Result[Cnt] := FList[Cnt];
+        end
+        else begin
+          SetLength(Result, 1);
+          Result[0] := FList[0];
+        end;
+      finally
+        FList.Free;
+      end;
+    end
+    else begin
+      SetLength(Result, 1);
+      Result[0] := ProcRootNewton(0, FB, FC, FD);
+    end;
+  end;
+end;
+
+function TSinPoly.ProcPolyOrder1Fit: TArrayOfDouble;
+begin
+  SetLength(Result, 0);
+  if Self.Count > 1 then begin
+    Result := ProcPolyfit(sporFitOrder1);
+  end;
+end;
+
+function TSinPoly.ProcPolyOrder2Fit: TArrayOfDouble;
+begin
+  if Self.Count > 2 then
+    Result := ProcPolyfit(sporFitOrder2)
+  else
+    Result := Self.ProcPolyOrder1Fit;
+end;
+
+function TSinPoly.ProcPolyOrder3Fit: TArrayOfDouble;
+begin
+  if Self.Count > 3 then
+    Result := ProcPolyfit(sporFitOrder3)
+  else
+    Result := Self.ProcPolyOrder2Fit;
 end;
 
 end.
